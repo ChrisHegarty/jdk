@@ -29,26 +29,46 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.time.Duration;
 import java.util.concurrent.TimeUnit;
-
+import jdk.jfr.consumer.RecordingStream;
 import org.openjdk.jmh.annotations.*;
 
 /**
  * Tests the overheads of I/O API.
  * This test is known to depend heavily on network conditions and paltform.
  */
-@BenchmarkMode(Mode.Throughput)
-@OutputTimeUnit(TimeUnit.MILLISECONDS)
+@BenchmarkMode(Mode.AverageTime)
+@Warmup(iterations = 5, time = 500, timeUnit = TimeUnit.MILLISECONDS)
+@Measurement(iterations = 10, time = 1000, timeUnit = TimeUnit.MILLISECONDS)
+@OutputTimeUnit(TimeUnit.MICROSECONDS)
 @State(Scope.Thread)
 public class SocketChannelReadWrite {
+
+    @Param({"JFR-disabled", "JFR-enabled-socketWrite-no", "JFR-enabled-socketWrite-yes"})
+    public String setupJFR;
 
     private ServerSocketChannel ssc;
     private SocketChannel s1, s2;
     private ReadThread rt;
     private ByteBuffer bb = ByteBuffer.allocate(1);
+    private RecordingStream recordingStream;
 
     @Setup(Level.Trial)
     public void beforeRun() throws IOException {
+        if (setupJFR.contains("enabled")) {
+            System.out.println("Enabling JFR");
+            recordingStream = new RecordingStream();
+            if (setupJFR.equals("JFR-enabled-socketWrite-yes")) {
+                System.out.println("Enabling socketWrite");
+                recordingStream.enable("jdk.SocketWrite").withThreshold(Duration.ofMillis(0));
+                //recordingStream.onEvent("jdk.SocketWrite", event -> {
+                //    System.out.println("---\nRECEIVED SocketWrite : " + event);
+                //});
+            }
+            recordingStream.startAsync();
+        }
+
         InetAddress iaddr = InetAddress.getLocalHost();
 
         ssc = ServerSocketChannel.open().bind(null);
@@ -68,12 +88,15 @@ public class SocketChannelReadWrite {
         s2.close();
         ssc.close();
         rt.join();
+        if (recordingStream != null)
+            recordingStream.close();
     }
 
     @Benchmark
-    public void test() throws IOException {
-        s1.write(bb);
+    public int test() throws IOException {
+        int n = s1.write(bb);
         bb.flip();
+        return n;
     }
 
     static class ReadThread extends Thread {
