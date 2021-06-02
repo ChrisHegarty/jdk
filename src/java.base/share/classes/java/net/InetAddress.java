@@ -335,6 +335,10 @@ public class InetAddress implements java.io.Serializable {
                         return inet4Address.addressValue();
                     }
 
+                    public String hostnameValue(InetAddress inetAddress) {
+                        return inetAddress.holder.getHostName();
+                    }
+
                     public byte[] addressBytes(Inet6Address inet6Address) {
                         return inet6Address.addressBytes();
                     }

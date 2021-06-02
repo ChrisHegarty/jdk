@@ -59,6 +59,8 @@ import java.util.concurrent.locks.ReentrantLock;
 import static java.net.StandardProtocolFamily.INET;
 import static java.net.StandardProtocolFamily.INET6;
 import static java.net.StandardProtocolFamily.UNIX;
+import jdk.internal.access.JavaNetInetAddressAccess;
+import jdk.internal.access.SharedSecrets;
 import jdk.internal.event.SocketWriteEvent;
 import sun.net.ConnectionResetException;
 import sun.net.NetHooks;
@@ -537,10 +539,9 @@ class SocketChannelImpl
                 event.bytesWritten = bytes;
                 SocketAddress remoteAddress = getRemoteAddress();
                 if (remoteAddress instanceof InetSocketAddress isa) {
-                    String hostString  = isa.getAddress().toString();
-                    int delimiterIndex = hostString.lastIndexOf('/');
-                    event.host = hostString.substring(0, delimiterIndex);
-                    event.address = hostString.substring(delimiterIndex + 1);
+                    InetAddress address = isa.getAddress();
+                    event.host = getHostName(address);
+                    event.address = address.getHostAddress();
                     event.port = isa.getPort();
                 } else {
                     UnixDomainSocketAddress udsa = (UnixDomainSocketAddress) remoteAddress;
@@ -1518,5 +1519,13 @@ class SocketChannelImpl
         }
         sb.append(']');
         return sb.toString();
+    }
+
+    private static final JavaNetInetAddressAccess JNINA = SharedSecrets.getJavaNetInetAddressAccess();
+
+    /** Returns the hostname of the given address, or empty string if none. */
+    private static final String getHostName(InetAddress address) {
+        var h = JNINA.hostnameValue(address);
+        return h == null ? "" : h;
     }
 }
