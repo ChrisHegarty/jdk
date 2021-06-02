@@ -45,7 +45,7 @@ final class SocketOutputStreamInstrumentor {
     @JIInstrumentationMethod
     public void write(byte b[], int off, int len) throws IOException {
         EventHandler handler = Handlers.SOCKET_WRITE;
-        if (!handler.isEnabled()) {
+        if (true) { //!handler.isEnabled()) {   // temporarily disable
             write(b, off, len);
             return;
         }

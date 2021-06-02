@@ -37,6 +37,7 @@ import java.net.SocketException;
 import java.net.SocketOption;
 import java.net.SocketTimeoutException;
 import java.net.StandardSocketOptions;
+import java.net.UnixDomainSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.AlreadyBoundException;
 import java.nio.channels.AlreadyConnectedException;
@@ -58,7 +59,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import static java.net.StandardProtocolFamily.INET;
 import static java.net.StandardProtocolFamily.INET6;
 import static java.net.StandardProtocolFamily.UNIX;
-
+import jdk.internal.event.SocketWriteEvent;
 import sun.net.ConnectionResetException;
 import sun.net.NetHooks;
 import sun.net.ext.ExtendedSocketOptions;
@@ -521,6 +522,40 @@ class SocketChannelImpl
 
     @Override
     public int write(ByteBuffer buf) throws IOException {
+        if (!SocketWriteEvent.EVENT.isEnabled()) {
+            return write0(buf);
+        }
+        int bytesWritten = 0;
+        SocketWriteEvent event = new SocketWriteEvent();
+        try {
+            event.begin();
+            bytesWritten = write0(buf);
+        } finally {
+            event.end();
+            if (event.shouldCommit()) {
+                long bytes = bytesWritten < 0 ? 0 : bytesWritten;
+                event.bytesWritten = bytes;
+                SocketAddress remoteAddress = getRemoteAddress();
+                if (remoteAddress instanceof InetSocketAddress isa) {
+                    String hostString  = isa.getAddress().toString();
+                    int delimiterIndex = hostString.lastIndexOf('/');
+                    event.host = hostString.substring(0, delimiterIndex);
+                    event.address = hostString.substring(delimiterIndex + 1);
+                    event.port = isa.getPort();
+                } else {
+                    UnixDomainSocketAddress udsa = (UnixDomainSocketAddress) remoteAddress;
+                    String path = "[" + udsa.getPath().toString() + "]";
+                    event.host = "Unix domain socket";
+                    event.address = path;
+                    event.port = 0;
+                }
+                event.commit();
+            }
+        }
+        return bytesWritten;
+    }
+
+    private int write0(ByteBuffer buf) throws IOException {
         Objects.requireNonNull(buf);
         writeLock.lock();
         try {

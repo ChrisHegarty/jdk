@@ -67,6 +67,7 @@ public final class JDKEvents {
         DeserializationEvent.class,
         ProcessStartEvent.class,
         SecurityPropertyModificationEvent.class,
+        SocketWriteEvent.class,
         TLSHandshakeEvent.class,
         X509CertificateEvent.class,
         X509ValidationEvent.class
@@ -77,7 +78,6 @@ public final class JDKEvents {
         FileReadEvent.class,
         FileWriteEvent.class,
         SocketReadEvent.class,
-        SocketWriteEvent.class,
         ExceptionThrownEvent.class,
         ExceptionStatisticsEvent.class,
         ErrorThrownEvent.class,
@@ -86,6 +86,7 @@ public final class JDKEvents {
         jdk.internal.event.DeserializationEvent.class,
         jdk.internal.event.ProcessStartEvent.class,
         jdk.internal.event.SecurityPropertyModificationEvent.class,
+        jdk.internal.event.SocketWriteEvent.class,
         jdk.internal.event.TLSHandshakeEvent.class,
         jdk.internal.event.X509CertificateEvent.class,
         jdk.internal.event.X509ValidationEvent.class,
@@ -101,7 +102,7 @@ public final class JDKEvents {
         FileChannelImplInstrumentor.class,
         SocketInputStreamInstrumentor.class,
         SocketOutputStreamInstrumentor.class,
-        SocketChannelImplInstrumentor.class
+        //SocketChannelImplInstrumentor.class
     };
 
     private static final Class<?>[] targetClasses = new Class<?>[instrumentationClasses.length];
