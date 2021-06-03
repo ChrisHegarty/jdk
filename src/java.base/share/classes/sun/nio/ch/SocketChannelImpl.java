@@ -122,6 +122,8 @@ class SocketChannelImpl
     // Binding
     private SocketAddress localAddress;
     private SocketAddress remoteAddress;
+    private String hostname;
+    private String addressString;
 
     // Socket adaptor, created on demand
     private Socket socket;
@@ -537,11 +539,9 @@ class SocketChannelImpl
             if (event.shouldCommit()) {
                 long bytes = bytesWritten < 0 ? 0 : bytesWritten;
                 event.bytesWritten = bytes;
-                SocketAddress remoteAddress = getRemoteAddress();
                 if (remoteAddress instanceof InetSocketAddress isa) {
-                    InetAddress address = isa.getAddress();
-                    event.host = getHostName(address);
-                    event.address = address.getHostAddress();
+                    event.host = hostname;
+                    event.address = addressString;
                     event.port = isa.getPort();
                 } else {
                     UnixDomainSocketAddress udsa = (UnixDomainSocketAddress) remoteAddress;
@@ -806,6 +806,11 @@ class SocketChannelImpl
                 NetHooks.beforeTcpConnect(fd, isa.getAddress(), isa.getPort());
             }
             remoteAddress = sa;
+            if (sa instanceof InetSocketAddress isa) {
+                var addr = isa.getAddress();
+                hostname = getHostName(addr);
+                addressString = addr.getHostAddress();
+            }
 
             if (blocking) {
                 // record thread so it can be signalled if needed
