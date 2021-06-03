@@ -119,6 +119,8 @@ class SocketChannelImpl
     // Binding
     private SocketAddress localAddress;
     private SocketAddress remoteAddress;
+    private String hostname;
+    private String addressString;
 
     // Socket adaptor, created on demand
     private Socket socket;
@@ -770,6 +772,12 @@ class SocketChannelImpl
                 NetHooks.beforeTcpConnect(fd, isa.getAddress(), isa.getPort());
             }
             remoteAddress = sa;
+            if (sa instanceof InetSocketAddress isa) {
+                String hostString  = isa.getAddress().toString();
+                int delimiterIndex = hostString.lastIndexOf('/');
+                hostname = hostString.substring(0, delimiterIndex);
+                addressString = hostString.substring(delimiterIndex + 1);
+            }
 
             if (blocking) {
                 // record thread so it can be signalled if needed
@@ -1483,5 +1491,13 @@ class SocketChannelImpl
         }
         sb.append(']');
         return sb.toString();
+    }
+
+    private final String getHostName() {
+        return hostname;
+    }
+
+    private final String getAddressString() {
+        return addressString;
     }
 }

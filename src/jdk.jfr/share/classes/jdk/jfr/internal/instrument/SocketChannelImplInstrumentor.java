@@ -144,11 +144,8 @@ final class SocketChannelImplInstrumentor {
                 long bytes = bytesWritten < 0 ? 0 : bytesWritten;
                 SocketAddress remoteAddress = getRemoteAddress();
                 if (remoteAddress instanceof InetSocketAddress isa) {
-                    String hostString  = isa.getAddress().toString();
-                    int delimiterIndex = hostString.lastIndexOf('/');
-
-                    String host = hostString.substring(0, delimiterIndex);
-                    String address = hostString.substring(delimiterIndex + 1);
+                    String host = getHostName();
+                    String address = getAddressString();
                     int port = isa.getPort();
                     handler.write(start, duration, host, address, port, bytes);
                 } else {
@@ -163,6 +160,16 @@ final class SocketChannelImplInstrumentor {
 
     public SocketAddress getRemoteAddress() throws IOException {
         // gets replaced by call to instrumented class
+        return null;
+    }
+
+    private final String getHostName() {
+        // replaced by call to instrumented class
+        return null;
+    }
+
+    private final String getAddressString() {
+        // replaced by call to instrumented class
         return null;
     }
 
