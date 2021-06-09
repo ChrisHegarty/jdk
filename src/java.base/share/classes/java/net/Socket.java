@@ -36,6 +36,7 @@ import java.nio.channels.SocketChannel;
 import java.util.Objects;
 import java.util.Set;
 import java.util.Collections;
+import jdk.internal.event.SocketWriteEventSupport;
 
 /**
  * This class implements client sockets (also called just
@@ -1027,6 +1028,25 @@ public class Socket implements java.io.Closeable {
         }
         @Override
         public void write(byte b[], int off, int len) throws IOException {
+            if (!SocketWriteEventSupport.isEnabled()) {
+                writeImpl(b, off, len);
+                return;
+            }
+            long bytesWritten = 0;
+            long start = 0;
+            try {
+                start = SocketWriteEventSupport.timestamp();
+                writeImpl(b, off, len);
+                bytesWritten = len;
+            } finally {
+                long duration = SocketWriteEventSupport.timestamp() - start;
+                if (SocketWriteEventSupport.shouldCommit(duration)) {
+                    SocketWriteEventSupport.write(start, duration, parent.getRemoteSocketAddress(), bytesWritten);
+                }
+            }
+        }
+
+        private void writeImpl(byte b[], int off, int len) throws IOException {
             out.write(b, off, len);
         }
 

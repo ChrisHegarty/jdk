@@ -45,7 +45,7 @@ import org.openjdk.jmh.annotations.*;
 @State(Scope.Thread)
 public class SocketChannelReadWrite {
 
-    @Param({"JFR-disabled", "JFR-enabled-socketWrite-no", "JFR-enabled-socketWrite-yes"})
+    @Param({"JFR-disabled", "JFR-enabled-socketWrite-no", "JFR-enabled-socketWrite-yes-LT", "JFR-enabled-socketWrite-yes-HT"})
     public String setupJFR;
 
     private ServerSocketChannel ssc;
@@ -59,9 +59,18 @@ public class SocketChannelReadWrite {
         if (setupJFR.contains("enabled")) {
             System.out.println("Enabling JFR");
             recordingStream = new RecordingStream();
-            if (setupJFR.equals("JFR-enabled-socketWrite-yes")) {
+            if (setupJFR.startsWith("JFR-enabled-socketWrite-yes")) {
                 System.out.println("Enabling socketWrite");
-                recordingStream.enable("jdk.SocketWrite").withThreshold(Duration.ofMillis(0));
+                var eventSettings = recordingStream.enable("jdk.SocketWrite");
+                if (setupJFR.endsWith("-HT")) {
+                    System.out.println(" with high threshold");
+                    // Threshold unreasonably large to ensure no events will be recorded
+                    eventSettings.withThreshold(Duration.ofSeconds(1_000_000));
+                } else {
+                    System.out.println(" with low threshold");
+                    // Threshold extremely low to ensure all events will be recorded
+                    eventSettings.withThreshold(Duration.ofMillis(0));
+                }
                 //recordingStream.onEvent("jdk.SocketWrite", event -> {
                 //    System.out.println("---\nRECEIVED SocketWrite : " + event);
                 //});

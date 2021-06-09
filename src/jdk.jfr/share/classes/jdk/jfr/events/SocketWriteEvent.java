@@ -30,12 +30,14 @@ import jdk.jfr.Description;
 import jdk.jfr.Label;
 import jdk.jfr.DataAmount;
 import jdk.jfr.Name;
+import jdk.jfr.internal.MirrorEvent;
 import jdk.jfr.internal.Type;
 
 @Name(Type.EVENT_NAME_PREFIX + "SocketWrite")
 @Label("Socket Write")
 @Category("Java Application")
 @Description("Writing data to a socket")
+@MirrorEvent(className = "jdk.internal.event.SocketWriteEvent")
 public final class SocketWriteEvent extends AbstractJDKEvent {
 
     // The order of these fields must be the same as the parameters in

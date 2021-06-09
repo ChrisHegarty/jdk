@@ -25,6 +25,10 @@
 
 package jdk.jfr.internal;
 
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles.Lookup;
+import java.lang.invoke.MethodType;
+import java.lang.invoke.TypeDescriptor;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -34,6 +38,8 @@ import java.util.List;
 import java.util.StringJoiner;
 
 import jdk.internal.org.objectweb.asm.ClassWriter;
+import jdk.internal.org.objectweb.asm.ConstantDynamic;
+import jdk.internal.org.objectweb.asm.Handle;
 import jdk.internal.org.objectweb.asm.Label;
 import jdk.internal.org.objectweb.asm.MethodVisitor;
 import jdk.internal.org.objectweb.asm.Opcodes;
@@ -54,7 +60,7 @@ final class EventHandlerCreator {
     // the contents. Using '52' even though we know later versions
     // are available. The reason for this is compatibility aspects
     // with for example WLS.
-    private static final int CLASS_VERSION = 52;
+    private static final int CLASS_VERSION = 61;
 
     // This is needed so a new EventHandler is automatically generated in MetadataRepository
     // if a user Event class is loaded using APPCDS/CDS.
@@ -74,6 +80,7 @@ final class EventHandlerCreator {
     private static final Method METHOD_GET_EVENT_WRITER = new Method("getEventWriter", "()" + TYPE_EVENT_WRITER.getDescriptor());
     private static final Method METHOD_EVENT_HANDLER_CONSTRUCTOR = new Method("<init>", DESCRIPTOR_EVENT_HANDLER);
     private static final Method METHOD_RESET = new Method("reset", "()V");
+    private static final Method METHOD_WRITE_HANDLE = new Method("writeHandle", "()" + MethodHandle.class.descriptorString());
 
     private final ClassWriter classWriter;
     private final String className;
@@ -132,6 +139,7 @@ final class EventHandlerCreator {
         buildClassInfo();
         buildConstructor();
         buildWriteMethod();
+        buildWriteHandleMethod();
         byte[] bytes = classWriter.toByteArray();
         ASMToolkit.logASM(className, bytes);
         return SecuritySupport.defineClass(EventHandler.class, bytes).asSubclass(EventHandler.class);
@@ -320,6 +328,21 @@ final class EventHandlerCreator {
         // stack:
         mv.visitFrame(Opcodes.F_SAME, 0, null, 0, null);
         mv.visitInsn(Opcodes.RETURN);
+        mv.visitMaxs(0, 0);
+        mv.visitEnd();
+    }
+
+    private void buildWriteHandleMethod() {
+        MethodVisitor mv = classWriter.visitMethod(Opcodes.ACC_PUBLIC, METHOD_WRITE_HANDLE.getName(), METHOD_WRITE_HANDLE.getDescriptor(), null, null);
+        mv.visitCode();
+        MethodType mtype = MethodType.methodType(MethodHandle.class, Lookup.class, String.class,
+                TypeDescriptor.class, String.class);
+        Handle bsm = new Handle(Opcodes.H_INVOKESTATIC, Type.getInternalName(jdk.jfr.internal.EventHandlerBootstraps.class),
+                "writeHandleBootstrap", mtype.descriptorString(), false);
+        ConstantDynamic dynamic = new ConstantDynamic("writeHandle", MethodHandle.class.descriptorString(), bsm,
+                new Object[] { ASMToolkit.makeWriteMethod(fields).getDescriptor() });
+        mv.visitLdcInsn(dynamic);
+        mv.visitInsn(Opcodes.ARETURN);
         mv.visitMaxs(0, 0);
         mv.visitEnd();
     }

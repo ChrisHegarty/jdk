@@ -35,6 +35,7 @@ import jdk.jfr.internal.handlers.EventHandler;
 
 /**
  * See {@link JITracer} for an explanation of this code.
+ * Note: only read methods are instrumented, write methods use another mechanism
  */
 @JIInstrumentationTarget("sun.nio.ch.SocketChannelImpl")
 final class SocketChannelImplInstrumentor {
@@ -126,85 +127,8 @@ final class SocketChannelImplInstrumentor {
         return bytesRead;
     }
 
-    @SuppressWarnings("deprecation")
-    @JIInstrumentationMethod
-    public int write(ByteBuffer buf) throws IOException {
-        EventHandler handler = Handlers.SOCKET_WRITE;
-        if (!handler.isEnabled()) {
-            return write(buf);
-        }
-        int bytesWritten = 0;
-        long start = 0;
-        try {
-            start = EventHandler.timestamp();
-            bytesWritten = write(buf);
-        } finally {
-            long duration = EventHandler.timestamp() - start;
-            if (handler.shouldCommit(duration)) {
-                long bytes = bytesWritten < 0 ? 0 : bytesWritten;
-                SocketAddress remoteAddress = getRemoteAddress();
-                if (remoteAddress instanceof InetSocketAddress isa) {
-                    String host = getHostName();
-                    String address = getAddressString();
-                    int port = isa.getPort();
-                    handler.write(start, duration, host, address, port, bytes);
-                } else {
-                    UnixDomainSocketAddress udsa = (UnixDomainSocketAddress) remoteAddress;
-                    String path = "[" + udsa.getPath().toString() + "]";
-                    handler.write(start, duration, "Unix domain socket", path, 0, bytes);
-                }
-            }
-        }
-        return bytesWritten;
-    }
-
     public SocketAddress getRemoteAddress() throws IOException {
         // gets replaced by call to instrumented class
         return null;
-    }
-
-    private final String getHostName() {
-        // replaced by call to instrumented class
-        return null;
-    }
-
-    private final String getAddressString() {
-        // replaced by call to instrumented class
-        return null;
-    }
-
-    @SuppressWarnings("deprecation")
-    @JIInstrumentationMethod
-    public long write(ByteBuffer[] srcs, int offset, int length) throws IOException {
-        EventHandler handler = Handlers.SOCKET_WRITE;
-        if (!handler.isEnabled()) {
-            return write(srcs, offset, length);
-        }
-        long bytesWritten = 0;
-        long start = 0;
-        try {
-            start = EventHandler.timestamp();
-            bytesWritten = write(srcs, offset, length);
-        } finally {
-            long duration = EventHandler.timestamp() - start;
-            if (handler.shouldCommit(duration)) {
-                long bytes = bytesWritten < 0 ? 0 : bytesWritten;
-                SocketAddress remoteAddress = getRemoteAddress();
-                if (remoteAddress instanceof InetSocketAddress isa) {
-                    String hostString  = isa.getAddress().toString();
-                    int delimiterIndex = hostString.lastIndexOf('/');
-
-                    String host = hostString.substring(0, delimiterIndex);
-                    String address = hostString.substring(delimiterIndex + 1);
-                    int port = isa.getPort();
-                    handler.write(start, duration, host, address, port, bytes);
-                } else {
-                    UnixDomainSocketAddress udsa = (UnixDomainSocketAddress) remoteAddress;
-                    String path = "[" + udsa.getPath().toString() + "]";
-                    handler.write(start, duration, "Unix domain socket", path, 0, bytes);
-                }
-            }
-        }
-        return bytesWritten;
     }
 }

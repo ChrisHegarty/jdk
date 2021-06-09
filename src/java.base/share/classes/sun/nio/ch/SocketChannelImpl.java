@@ -59,6 +59,7 @@ import static java.net.StandardProtocolFamily.INET;
 import static java.net.StandardProtocolFamily.INET6;
 import static java.net.StandardProtocolFamily.UNIX;
 
+import jdk.internal.event.SocketWriteEventSupport;
 import sun.net.ConnectionResetException;
 import sun.net.NetHooks;
 import sun.net.ext.ExtendedSocketOptions;
@@ -523,6 +524,24 @@ class SocketChannelImpl
 
     @Override
     public int write(ByteBuffer buf) throws IOException {
+        if (!SocketWriteEventSupport.isEnabled()) {
+            return writeImpl(buf);
+        }
+        int bytesWritten = 0;
+        long start = 0;
+        try {
+            start = SocketWriteEventSupport.timestamp();
+            bytesWritten = writeImpl(buf);
+        } finally {
+            long duration = SocketWriteEventSupport.timestamp() - start;
+            if (SocketWriteEventSupport.shouldCommit(duration)) {
+                SocketWriteEventSupport.write(start, duration, getRemoteAddress(), bytesWritten);
+            }
+        }
+        return bytesWritten;
+    }
+
+    private int writeImpl(ByteBuffer buf) throws IOException {
         Objects.requireNonNull(buf);
         writeLock.lock();
         try {
@@ -551,6 +570,26 @@ class SocketChannelImpl
 
     @Override
     public long write(ByteBuffer[] srcs, int offset, int length)
+        throws IOException
+    {
+        if (!SocketWriteEventSupport.isEnabled()) {
+            return writeImpl(srcs, offset, length);
+        }
+        long bytesWritten = 0;
+        long start = 0;
+        try {
+            start = SocketWriteEventSupport.timestamp();
+            bytesWritten = writeImpl(srcs, offset, length);
+        } finally {
+            long duration = SocketWriteEventSupport.timestamp() - start;
+            if (SocketWriteEventSupport.shouldCommit(duration)) {
+                SocketWriteEventSupport.write(start, duration, getRemoteAddress(), bytesWritten);
+            }
+        }
+        return bytesWritten;
+    }
+
+    private long writeImpl(ByteBuffer[] srcs, int offset, int length)
         throws IOException
     {
         Objects.checkFromIndexSize(offset, length, srcs.length);

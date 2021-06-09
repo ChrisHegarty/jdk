@@ -52,6 +52,11 @@ public interface JavaNetInetAddressAccess {
     int addressValue(Inet4Address inet4Address);
 
     /**
+     * Returns the hostname address, may be null.
+     */
+    String hostnameValue(InetAddress inetAddress);
+
+    /**
      * Returns a reference to the byte[] with the IPv6 address.
      */
     byte[] addressBytes(Inet6Address inet6Address);

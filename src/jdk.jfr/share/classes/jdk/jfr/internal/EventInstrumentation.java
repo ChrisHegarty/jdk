@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -115,6 +115,8 @@ public final class EventInstrumentation {
     private static final Method METHOD_EVENT_SHOULD_COMMIT = new Method("shouldCommit", Type.BOOLEAN_TYPE, new Type[0]);
     private static final Method METHOD_EVENT_HANDLER_SHOULD_COMMIT = new Method("shouldCommit", Type.BOOLEAN_TYPE, new Type[] { Type.LONG_TYPE });
     private static final Method METHOD_DURATION = new Method("duration", Type.LONG_TYPE, new Type[] { Type.LONG_TYPE });
+    private static final Type TYPE_INTERNAL_EVENT_HANDLER = Type.getType(jdk.internal.event.EventHandler.class);
+    private static final Method METHOD_GET_EVENT_HANDLER = new Method("getEventHandler", TYPE_INTERNAL_EVENT_HANDLER, new Type[0]);
 
     private final ClassNode classNode;
     private final List<SettingInfo> settingInfos;
@@ -468,6 +470,14 @@ public final class EventInstrumentation {
             methodVisitor.visitInsn(Opcodes.ICONST_0);
             methodVisitor.visitInsn(Opcodes.IRETURN);
         });
+
+        if (getMethodNode(METHOD_GET_EVENT_HANDLER) != null){
+            // MyEvent#getEventHandler()
+            updateMethod(METHOD_GET_EVENT_HANDLER, methodVisitor -> {
+                getEventHandler(methodVisitor);
+                methodVisitor.visitInsn(Opcodes.ARETURN);
+            });
+        }
     }
 
 
