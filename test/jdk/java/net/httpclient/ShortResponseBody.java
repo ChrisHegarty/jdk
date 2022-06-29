@@ -181,6 +181,26 @@ public abstract class ShortResponseBody {
                 .join();
     }
 
+    @DataProvider(name = "sanityBadRequest")
+    public Object[][] sanityBadRequest() {
+        return new Object[][]{
+                { httpURIVarLen  }, // no query string
+                { httpsURIVarLen },
+                { httpURIFixLen  },
+        };
+    }
+
+    @Test(dataProvider = "sanityBadRequest")
+    void sanityBadRequest(String url) throws Exception {
+        HttpClient client = newHttpClient();
+        url = uniqueURL(url);
+        HttpRequest request = HttpRequest.newBuilder(URI.create(url)).build();
+        out.println("Request: " + request);
+        HttpResponse<String> response = client.send(request, ofString());
+        assertEquals(response.statusCode(), 400);
+        assertEquals(response.body(), "");
+    }
+
     @DataProvider(name = "uris")
     public Object[][] variants(ITestContext context) {
         String[][] cases = new String[][] {
