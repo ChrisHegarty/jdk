@@ -486,6 +486,15 @@ public abstract class ShortResponseBody {
             this.name = name;
         }
 
+        private static final String BAD_REQUEST_RESPONSE =
+                "HTTP/1.1 400 Bad Request\r\n" +
+                "Content-Length: 0\r\n" +
+                "Connection: close\r\n\r\n";
+
+        final String badRequestResponse() {
+            return BAD_REQUEST_RESPONSE;
+        }
+
         abstract String response();
 
         @Override
@@ -502,8 +511,9 @@ public abstract class ShortResponseBody {
 
                     String query = uriPath.getRawQuery();
                     if (query == null) {
-                        out.println("Request headers: [" + headers + "]");
-                        writeResponse(s, "HTTP/1.1 400 Bad Request\r\n\r\n")
+                        out.println("Bad request received - ignoring - headers: [" + headers + "]");
+                        String reply = badRequestResponse();
+                        writeResponse(s, reply, reply.length());
                         continue;
                     }
                     String qv = query.split("=")[1];
@@ -515,7 +525,7 @@ public abstract class ShortResponseBody {
                     }
 
                     out.println(name + ": writing " + len  + " bytes");
-                    writeResponse(s, response());
+                    writeResponse(s, response(), len);
                 } catch (Throwable e) {
                     if (!closed) {
                         out.println("Unexpected exception in server: " + e);
@@ -526,7 +536,7 @@ public abstract class ShortResponseBody {
             }
         }
 
-        private static writeResponse(Socket socket, String response) {
+        private static void writeResponse(Socket socket, String response, int len) throws IOException {
             OutputStream os = socket.getOutputStream();
             byte[] responseBytes = response.getBytes(US_ASCII);
             for (int i = 0; i < len; ++i) {
